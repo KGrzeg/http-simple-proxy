@@ -1,14 +1,13 @@
+require('dotenv').config()
 const express = require('express');
 const proxy = require('express-http-proxy');
 const moment = require('moment');
 
-const port = 3000;
-const baseUrl = "https://v1.nocodeapi.com/";
-
-const app = express();
-
-const cacheDuration = 1 //hours
+const port = process.env.PORT;
+const baseUrl = process.env.PROXY_TARGET;
+const cacheDuration = process.env.CACHE_DURATION_HOURS;
 const cache = {};
+const app = express();
 
 app.use('/api/', proxy(baseUrl, {
   filter: function (req, res) {    
@@ -30,8 +29,16 @@ app.use('/api/', proxy(baseUrl, {
     return false;
   },
   userResDecorator: function(proxyRes, proxyResData, userReq, userRes) {
+    let body;
+    try{
+      body = JSON.parse(proxyResData.toString('utf8'));
+    }catch(err){
+      console.log(err);
+      return {};
+    }
+
     cache[userReq.url] = {
-      content: JSON.parse(proxyResData.toString('utf8')),
+      content: body,
       timestamp: moment()
     };
 
