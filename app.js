@@ -3,6 +3,7 @@ const express = require('express');
 const proxy = require('express-http-proxy');
 const moment = require('moment');
 const MongoClient = require('mongodb').MongoClient;
+const cors = require('cors')
 
 const port = process.env.PORT;
 const baseUrl = process.env.PROXY_TARGET;
@@ -30,13 +31,10 @@ function connectToDatabase() {
 }
 
 
-app.get('/', (req, res) => {
-  res.send('Go away!')
-});
-
 async function main() {
   const collection = await connectToDatabase();
 
+  app.use(cors());
   app.use('/api/', proxy(baseUrl, {
     filter: async function (req, res) {
       const cached = await collection.findOne({ url: req.url });
@@ -81,8 +79,16 @@ async function main() {
     }
   }));
 
+  app.get('/', (req, res) => {
+    res.send('Go away!')
+  });
 
-  const closeDbClient = (code) => client.close();
+  const closeDbClient = async (code) => {
+    if (client.isConnected()) {
+      await client.close();
+      console.log("DB closed");
+    }
+  }
   process.on('exit', closeDbClient);
   process.on('SIGINT', closeDbClient);
   process.on('SIGTERM', closeDbClient);
